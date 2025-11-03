@@ -1,0 +1,82 @@
+
+import type { Contact, Message, Call } from './types';
+import { MessageType } from './types';
+
+export const mockContacts: Contact[] = [
+  {
+    id: 1,
+    name: 'Alice Dubois',
+    avatarUrl: 'https://picsum.photos/id/1011/200/200',
+    status: 'En ligne',
+    lastMessage: 'Ok, à tout à l\'heure !',
+    lastMessageTime: '15:32',
+    unreadCount: 2,
+  },
+  {
+    id: 2,
+    name: 'Benjamin Lemoine',
+    avatarUrl: 'https://picsum.photos/id/1012/200/200',
+    status: 'Dernière visite hier à 20:15',
+    lastMessage: 'Photo: Un magnifique coucher de soleil',
+    lastMessageTime: 'Hier',
+  },
+  {
+    id: 3,
+    name: 'Chloé Martin',
+    avatarUrl: 'https://picsum.photos/id/1027/200/200',
+    status: 'Écrit...',
+    lastMessage: 'Oui, c\'est une excellente idée.',
+    lastMessageTime: '15:29',
+  },
+  {
+    id: 4,
+    name: 'David Garcia',
+    avatarUrl: 'https://picsum.photos/id/1005/200/200',
+    status: 'En ligne',
+    lastMessage: 'Message vocal (0:45)',
+    lastMessageTime: '14:55',
+  },
+    {
+    id: 5,
+    name: 'Émilie Petit',
+    avatarUrl: 'https://picsum.photos/id/1013/200/200',
+    status: 'Dernière visite il y a 2h',
+    lastMessage: 'Document: Rapport_Final.pdf',
+    lastMessageTime: '13:10',
+  },
+   {
+    id: 6,
+    name: 'Maman',
+    avatarUrl: 'https://picsum.photos/id/1016/200/200',
+    status: 'En ligne',
+    lastMessage: 'Appelle-moi quand tu peux ❤️',
+    lastMessageTime: '11:45',
+    unreadCount: 1,
+  },
+];
+
+export const mockMessages: { [key: number]: Message[] } = {
+  1: [
+    { id: 1, senderId: 1, text: 'Salut ! Comment ça va ?', timestamp: '15:28', type: MessageType.TEXT },
+    { id: 2, senderId: 0, text: 'Hey ! Ça va bien et toi ?', timestamp: '15:29', type: MessageType.TEXT, reactions: [{ emoji: '❤️', users: [1] }] },
+    { id: 3, senderId: 1, text: 'Super ! Tu es dispo pour un café demain ?', timestamp: '15:30', type: MessageType.TEXT },
+    { id: 4, senderId: 0, text: 'Oui, avec plaisir ! Vers quelle heure ?', timestamp: '15:31', type: MessageType.TEXT },
+    { id: 5, senderId: 1, text: '10h ça te va ? Au café du coin.', timestamp: '15:31', type: MessageType.TEXT, reactions: [{ emoji: '👍', users: [0, 2] }, {emoji: '🎉', users: [1]}] },
+    { id: 6, senderId: 0, text: 'Parfait !', timestamp: '15:32', type: MessageType.TEXT },
+    { id: 7, senderId: 1, text: 'Ok, à tout à l\'heure !', timestamp: '15:32', type: MessageType.TEXT },
+  ],
+  4: [
+    { id: 1, senderId: 0, text: 'Peux-tu m\'envoyer le rapport ?', timestamp: '14:50', type: MessageType.TEXT },
+    { id: 2, senderId: 4, text: 'Oui, bien sûr.', timestamp: '14:51', type: MessageType.TEXT },
+     { id: 3, senderId: 4, type: MessageType.FILE, text: '', timestamp: '14:52', fileInfo: { name: 'Analyse_Q2.docx', size: '1.2 MB' } },
+    { id: 4, senderId: 0, text: 'Merci ! Je vais y jeter un oeil.', timestamp: '14:53', type: MessageType.TEXT },
+    { id: 5, senderId: 4, type: MessageType.VOICE, text: '', timestamp: '14:55', voiceDuration: '0:45' },
+  ]
+};
+
+export const mockCalls: Call[] = [
+    { id: 1, contactId: 2, type: 'video', direction: 'outgoing', timestamp: 'Aujourd\'hui, 11:45' },
+    { id: 2, contactId: 3, type: 'audio', direction: 'incoming', timestamp: 'Hier, 18:30' },
+    { id: 3, contactId: 4, type: 'audio', direction: 'missed', timestamp: 'Hier, 14:12' },
+    { id: 4, contactId: 1, type: 'video', direction: 'outgoing', timestamp: '25/07/2024' },
+];

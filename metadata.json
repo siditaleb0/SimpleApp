@@ -1,0 +1,8 @@
+{
+  "name": "SimpleApp",
+  "description": "A modern communication application for text messaging, voice messages, audio/video calls, and file sharing with your phone contacts.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
