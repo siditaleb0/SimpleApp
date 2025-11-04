@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import type { Message } from '../types';
 import { MessageType } from '../types';
@@ -11,6 +10,105 @@ interface MessageBubbleProps {
   isSender: boolean;
   onReact: (emoji: string) => void;
 }
+
+const linkify = (text: string) => {
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (part && part.match(urlRegex)) {
+      const href = part.startsWith('www.') ? `https://${part}` : part;
+      return (
+        <a
+          key={index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-cyan-300 hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
+const VoiceMessagePlayer: React.FC<{ message: Message; isSender: boolean }> = ({ message, isSender }) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const progressIntervalRef = useRef<number | null>(null);
+
+    const base64ToBlob = (base64: string, mimeType: string): Blob => {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+    };
+
+    useEffect(() => {
+        if (message.audioData) {
+            // Assuming the audio is webm, as recorded by MediaRecorder
+            const blob = base64ToBlob(message.audioData, 'audio/webm');
+            const url = URL.createObjectURL(blob);
+            audioRef.current = new Audio(url);
+
+            audioRef.current.addEventListener('ended', () => {
+                setIsPlaying(false);
+                setProgress(0);
+                if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+            });
+        }
+        return () => {
+            if (audioRef.current) {
+                URL.revokeObjectURL(audioRef.current.src);
+            }
+            if (progressIntervalRef.current) {
+                clearInterval(progressIntervalRef.current);
+            }
+        };
+    }, [message.audioData]);
+
+    const handlePlayPause = () => {
+        if (!audioRef.current) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+            if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+        } else {
+            audioRef.current.play();
+            setIsPlaying(true);
+            progressIntervalRef.current = window.setInterval(() => {
+                if (audioRef.current && audioRef.current.duration > 0) {
+                    setProgress((audioRef.current.currentTime / audioRef.current.duration) * 100);
+                }
+            }, 100);
+        }
+    };
+    
+    const PlayIcon: React.FC<{className: string}> = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>;
+    const PauseIcon: React.FC<{className: string}> = ({className}) => <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>;
+
+    const progressBgColor = isSender ? 'bg-white/30' : 'bg-gray-500';
+    const progressIndicatorColor = isSender ? 'bg-white' : 'bg-cyan-400';
+
+    return (
+        <div className="flex items-center">
+            <button onClick={handlePlayPause} className="mr-3 p-1 rounded-full text-white">
+                {isPlaying ? <PauseIcon className="w-6 h-6" /> : <PlayIcon className="w-6 h-6" />}
+            </button>
+            <div className={`w-32 h-1 ${progressBgColor} rounded-full relative`}>
+              <div className={`absolute top-0 left-0 h-full ${progressIndicatorColor} rounded-full`} style={{ width: `${progress}%` }}/>
+            </div>
+            <span className="ml-3 w-12 text-right text-xs opacity-70">{message.voiceDuration}</span>
+        </div>
+    );
+};
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSender, onReact }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -37,12 +135,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSender, onReac
   const renderContent = () => {
     switch (message.type) {
       case MessageType.VOICE:
-        return (
-          <div className="flex items-center">
-            <MicrophoneIcon className="w-5 h-5 mr-3" />
-            <div className="w-32 h-1 bg-gray-400 rounded-full mr-3"></div>
-            <span>{message.voiceDuration}</span>
-          </div>
+        return message.audioData ? <VoiceMessagePlayer message={message} isSender={isSender} /> : (
+            <div className="flex items-center">
+                <MicrophoneIcon className="w-5 h-5 mr-3" />
+                <div className="w-32 h-1 bg-gray-400 rounded-full mr-3"></div>
+                <span>{message.voiceDuration}</span>
+            </div>
         );
       case MessageType.FILE:
         return (
@@ -57,7 +155,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSender, onReac
       case MessageType.SYSTEM:
          return <p className="text-center text-xs text-gray-400 py-2">{message.text}</p>
       default: // TEXT
-        return <p className="break-words">{message.text}</p>;
+        return <p className="break-words whitespace-pre-wrap">{linkify(message.text)}</p>;
     }
   };
   

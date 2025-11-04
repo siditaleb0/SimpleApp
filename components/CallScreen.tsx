@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Contact, CallType, CallStatus } from '../types';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { PhoneIcon } from './icons/PhoneIcon';
+import { MicrophoneOffIcon } from './icons/MicrophoneOffIcon';
 
 const SpeakerIcon: React.FC<{className: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -114,7 +115,7 @@ const CallScreen: React.FC<CallScreenProps> = ({ contact, callType, onEndCall })
           )}
           
           <ControlButton onClick={() => setIsMuted(!isMuted)} label="Muet" isActive={isMuted}>
-            <MicrophoneIcon className="w-7 h-7" />
+            {isMuted ? <MicrophoneOffIcon className="w-7 h-7" /> : <MicrophoneIcon className="w-7 h-7" />}
           </ControlButton>
         </div>
         

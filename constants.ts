@@ -1,5 +1,4 @@
-
-import type { Contact, Message, Call } from './types';
+import type { Contact, Message, Call, User } from './types';
 import { MessageType } from './types';
 
 export const mockContacts: Contact[] = [
@@ -11,6 +10,12 @@ export const mockContacts: Contact[] = [
     lastMessage: 'Ok, à tout à l\'heure !',
     lastMessageTime: '15:32',
     unreadCount: 2,
+    statusUpdates: [
+      { id: 1, imageUrl: 'https://picsum.photos/id/11/1080/1920', timestamp: 'Il y a 5 minutes' },
+      { id: 2, imageUrl: 'https://picsum.photos/id/12/1080/1920', timestamp: 'Il y a 20 minutes' }
+    ],
+    isArchived: false,
+    isBlocked: false,
   },
   {
     id: 2,
@@ -19,6 +24,11 @@ export const mockContacts: Contact[] = [
     status: 'Dernière visite hier à 20:15',
     lastMessage: 'Photo: Un magnifique coucher de soleil',
     lastMessageTime: 'Hier',
+    statusUpdates: [
+      { id: 1, imageUrl: 'https://picsum.photos/id/21/1080/1920', timestamp: 'Il y a 2 heures', viewed: true }
+    ],
+    isArchived: false,
+    isBlocked: false,
   },
   {
     id: 3,
@@ -27,6 +37,8 @@ export const mockContacts: Contact[] = [
     status: 'Écrit...',
     lastMessage: 'Oui, c\'est une excellente idée.',
     lastMessageTime: '15:29',
+    isArchived: false,
+    isBlocked: false,
   },
   {
     id: 4,
@@ -35,6 +47,8 @@ export const mockContacts: Contact[] = [
     status: 'En ligne',
     lastMessage: 'Message vocal (0:45)',
     lastMessageTime: '14:55',
+    isArchived: false,
+    isBlocked: false,
   },
     {
     id: 5,
@@ -43,6 +57,11 @@ export const mockContacts: Contact[] = [
     status: 'Dernière visite il y a 2h',
     lastMessage: 'Document: Rapport_Final.pdf',
     lastMessageTime: '13:10',
+    statusUpdates: [
+      { id: 1, imageUrl: 'https://picsum.photos/id/51/1080/1920', timestamp: 'Il y a 47 minutes' }
+    ],
+    isArchived: false,
+    isBlocked: false,
   },
    {
     id: 6,
@@ -52,6 +71,11 @@ export const mockContacts: Contact[] = [
     lastMessage: 'Appelle-moi quand tu peux ❤️',
     lastMessageTime: '11:45',
     unreadCount: 1,
+    statusUpdates: [
+      { id: 1, imageUrl: 'https://picsum.photos/id/61/1080/1920', timestamp: 'Il y a 6 heures', viewed: true }
+    ],
+    isArchived: true,
+    isBlocked: false,
   },
 ];
 

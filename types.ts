@@ -3,14 +3,44 @@ export interface Reaction {
   users: number[]; // Array of user IDs, 0 for current user
 }
 
+export interface PrivacySettings {
+  readReceipts: boolean;
+  lastSeen: 'Tout le monde' | 'Mes contacts' | 'Personne';
+  profilePhoto: 'Tout le monde' | 'Mes contacts' | 'Personne';
+}
+
+export interface User {
+  name: string;
+  avatarUrl: string;
+  status: string;
+  privacySettings: PrivacySettings;
+  notificationSettings: {
+    enabled: boolean;
+  };
+  appearanceSettings: {
+    darkMode: boolean;
+  };
+  statusUpdates?: StatusUpdate[];
+}
+
+export interface StatusUpdate {
+  id: number;
+  timestamp: string;
+  imageUrl: string;
+  viewed?: boolean;
+}
+
 export interface Contact {
   id: number;
-  name: string;
+  name:string;
   avatarUrl: string;
   status: string;
   lastMessage?: string;
   lastMessageTime?: string;
   unreadCount?: number;
+  statusUpdates?: StatusUpdate[];
+  isArchived?: boolean;
+  isBlocked?: boolean;
 }
 
 export enum MessageType {
@@ -31,6 +61,7 @@ export interface Message {
     size: string;
   };
   voiceDuration?: string;
+  audioData?: string;
   reactions?: Reaction[];
 }
 
@@ -46,4 +77,4 @@ export interface Call {
   timestamp: string;
 }
 
-export type Screen = 'chats' | 'calls' | 'contacts';
+export type Screen = 'chats' | 'status' | 'calls' | 'contacts' | 'settings';

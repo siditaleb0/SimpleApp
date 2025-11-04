@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import type { Contact, Message, CallType } from '../types';
 import { MessageType } from '../types';
-import { mockMessages } from '../constants';
+import * as backend from '../backend';
 import MessageBubble from './MessageBubble';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 import { PhoneIcon } from './icons/PhoneIcon';
@@ -11,71 +10,99 @@ import { MoreVertIcon } from './icons/MoreVertIcon';
 import { PaperclipIcon } from './icons/PaperclipIcon';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { SendIcon } from './icons/SendIcon';
+import { ExportIcon } from './icons/ExportIcon';
+import { TrashIcon } from './icons/TrashIcon';
+import { StopIcon } from './icons/StopIcon';
+import { ArchiveIcon } from './icons/ArchiveIcon';
+import { UnarchiveIcon } from './icons/UnarchiveIcon';
+import { UserIcon } from './icons/UserIcon';
+import { BlockIcon } from './icons/BlockIcon';
+
 
 interface ChatScreenProps {
   contact: Contact;
   onBack: () => void;
   onStartCall: (contact: Contact, type: CallType) => void;
+  onArchive: (contactId: number, archiveState: boolean) => void;
+  onBlock: (contactId: number, blockState: boolean) => void;
+  onClearChat: (contactId: number) => void;
+  onViewProfile: (contact: Contact) => void;
 }
 
-const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall }) => {
-  const [messages, setMessages] = useState<Message[]>(mockMessages[contact.id] || []);
+const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, onArchive, onBlock, onClearChat, onViewProfile }) => {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerIntervalRef = useRef<number | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+  
+  useEffect(() => {
+    setMessages(backend.getMessages(contact.id));
+  }, [contact.id]);
+
 
   useEffect(scrollToBottom, [messages]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuRef]);
+
+   useEffect(() => {
+    if (isRecording) {
+        timerIntervalRef.current = window.setInterval(() => {
+            setRecordingTime(prevTime => prevTime + 1);
+        }, 1000);
+    } else {
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+        setRecordingTime(0);
+    }
+    return () => {
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+        }
+    };
+}, [isRecording]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === '') return;
 
     const message: Message = {
-      id: messages.length + 1,
+      id: Date.now(),
       senderId: 0, // 0 represents the current user
       text: newMessage,
       timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       type: MessageType.TEXT,
     };
-    setMessages([...messages, message]);
+    const updatedMessages = backend.saveMessage(contact.id, message);
+    setMessages(updatedMessages);
     setNewMessage('');
   };
 
   const handleReaction = (messageId: number, emoji: string) => {
-    setMessages(currentMessages => {
-      return currentMessages.map(msg => {
-        if (msg.id === messageId) {
-          const newReactions = [...(msg.reactions || [])];
-          let reaction = newReactions.find(r => r.emoji === emoji);
-
-          if (reaction) {
-            const userIndex = reaction.users.indexOf(0); // 0 is current user
-            if (userIndex > -1) {
-              // User already reacted, so remove reaction
-              reaction.users.splice(userIndex, 1);
-              if (reaction.users.length === 0) {
-                // No one else has this reaction, remove it entirely
-                return { ...msg, reactions: newReactions.filter(r => r.emoji !== emoji) };
-              }
-            } else {
-              // User hasn't reacted with this emoji yet, add them
-              reaction.users.push(0);
-            }
-          } else {
-            // New reaction for this message
-            reaction = { emoji, users: [0] };
-            newReactions.push(reaction);
-          }
-          
-          return { ...msg, reactions: newReactions };
-        }
-        return msg;
-      });
-    });
+    const updatedMessages = backend.updateMessageReactions(contact.id, messageId, emoji);
+    setMessages(updatedMessages);
   };
 
   const handleAttachmentClick = () => {
@@ -94,7 +121,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall })
     const file = e.target.files?.[0];
     if (file) {
       const message: Message = {
-        id: messages.length + 1,
+        id: Date.now(),
         senderId: 0,
         text: '',
         timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
@@ -104,12 +131,150 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall })
           size: formatFileSize(file.size),
         },
       };
-      setMessages(prev => [...prev, message]);
+      const updatedMessages = backend.saveMessage(contact.id, message);
+      setMessages(updatedMessages);
       
       if(e.target) {
         e.target.value = '';
       }
     }
+  };
+
+  const handleExportChat = () => {
+    const chatHistory = messages.map(msg => {
+      const senderName = msg.senderId === 0 ? 'Moi' : contact.name;
+      let messageText = msg.text;
+      if (msg.type === MessageType.FILE && msg.fileInfo) {
+          messageText = `Fichier: ${msg.fileInfo.name} (${msg.fileInfo.size})`;
+      } else if (msg.type === MessageType.VOICE && msg.voiceDuration) {
+          messageText = `Message vocal (${msg.voiceDuration})`;
+      } else if (msg.type === MessageType.SYSTEM) {
+          return `--- ${messageText} ---`;
+      }
+      return `[${msg.timestamp}] ${senderName}: ${messageText}`;
+    }).join('\n');
+
+    const header = `Discussion avec ${contact.name}\nExporté le ${new Date().toLocaleString('fr-FR')}\n\n`;
+    const fileContent = header + chatHistory;
+    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Discussion_avec_${contact.name.replace(/\s/g, '_')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setIsMenuOpen(false);
+  };
+
+    const formatTime = (seconds: number) => {
+        const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const secs = (seconds % 60).toString().padStart(2, '0');
+        return `${minutes}:${secs}`;
+    };
+
+    const blobToBase64 = (blob: Blob): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = (reader.result as string).split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    };
+
+    const handleStartRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream);
+            audioChunksRef.current = [];
+
+            mediaRecorderRef.current.ondataavailable = (event) => {
+                audioChunksRef.current.push(event.data);
+            };
+
+            mediaRecorderRef.current.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                const audioData = await blobToBase64(audioBlob);
+                
+                const message: Message = {
+                    id: Date.now(),
+                    senderId: 0,
+                    text: '',
+                    timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                    type: MessageType.VOICE,
+                    voiceDuration: formatTime(recordingTime),
+                    audioData: audioData,
+                };
+                const updatedMessages = backend.saveMessage(contact.id, message);
+                setMessages(updatedMessages);
+
+                // Clean up
+                stream.getTracks().forEach(track => track.stop());
+                setIsRecording(false);
+            };
+
+            mediaRecorderRef.current.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            alert("Impossible d'accéder au microphone. Veuillez vérifier les autorisations.");
+        }
+    };
+
+    const handleStopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+        }
+    };
+
+    const handleCancelRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            // Stop without saving
+            mediaRecorderRef.current.onstop = () => {
+                 mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+            };
+            mediaRecorderRef.current.stop();
+        }
+        setIsRecording(false);
+    };
+
+  const handleArchive = () => {
+    onArchive(contact.id, !contact.isArchived);
+    setIsMenuOpen(false);
+  }
+
+  const handleClearChat = () => {
+    setIsMenuOpen(false);
+    if (window.confirm(`Voulez-vous vraiment effacer tous les messages de cette discussion ?`)) {
+      onClearChat(contact.id);
+      setMessages([]);
+    }
+  }
+
+  const handleBlock = () => {
+    setIsMenuOpen(false);
+    if (window.confirm(`Voulez-vous vraiment bloquer ${contact.name} ? Les contacts bloqués ne pourront plus vous appeler ou vous envoyer de messages.`)) {
+      onBlock(contact.id, true);
+    }
+  }
+  
+  const handleUnblock = () => {
+    onBlock(contact.id, false);
+    setIsMenuOpen(false);
+  }
+
+  const flagBackgroundStyle = {
+    backgroundImage: `
+      linear-gradient(rgba(17, 24, 39, 0.85), rgba(17, 24, 39, 0.85)),
+      url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 600'%3e%3crect width='900' height='600' fill='%2300A95C'/%3e%3crect width='900' height='90' fill='%23D21034'/%3e%3crect width='900' height='90' y='510' fill='%23D21034'/%3e%3cpath d='M450 135c-99.41 0-180 80.59-180 180h360c0-99.41-80.59-180-180-180zm0 45c74.56 0 135 60.44 135 135H315c0-74.56 60.44-135 135-135z' fill='%23FFD700'/%3e%3cpath d='M450 162.9l-19.4 59.8h-62.9l50.9 36.9-19.4 59.8 50.9-36.9 50.9 36.9-19.4-59.8 50.9-36.9h-62.9z' fill='%23FFD700'/%3e%3c/svg%3e")
+    `,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed'
   };
 
   return (
@@ -125,20 +290,41 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall })
           <p className="text-sm text-gray-400">{contact.status}</p>
         </div>
         <div className="flex items-center space-x-2">
-          <button onClick={() => onStartCall(contact, 'video')} className="p-2 rounded-full hover:bg-gray-700">
+          <button onClick={() => onStartCall(contact, 'video')} className="p-2 rounded-full hover:bg-gray-700 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={contact.isBlocked}>
             <VideoIcon className="w-6 h-6" />
           </button>
-          <button onClick={() => onStartCall(contact, 'audio')} className="p-2 rounded-full hover:bg-gray-700">
+          <button onClick={() => onStartCall(contact, 'audio')} className="p-2 rounded-full hover:bg-gray-700 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={contact.isBlocked}>
             <PhoneIcon className="w-6 h-6" />
           </button>
-          <button className="p-2 rounded-full hover:bg-gray-700">
-            <MoreVertIcon className="w-6 h-6" />
-          </button>
+          <div className="relative">
+            <button onClick={() => setIsMenuOpen(prev => !prev)} className="p-2 rounded-full hover:bg-gray-700">
+              <MoreVertIcon className="w-6 h-6" />
+            </button>
+            {isMenuOpen && (
+              <div ref={menuRef} className="absolute top-12 right-0 w-56 bg-gray-700 rounded-md shadow-lg z-20 py-1">
+                <ul>
+                  <li><button onClick={() => { onViewProfile(contact); setIsMenuOpen(false); }} className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-600"><UserIcon className="w-5 h-5 mr-3" />Voir le profil</button></li>
+                  <li><button onClick={handleArchive} className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-600">{contact.isArchived ? <><UnarchiveIcon className="w-5 h-5 mr-3" />Désarchiver</> : <><ArchiveIcon className="w-5 h-5 mr-3" />Archiver</>}</button></li>
+                  <li><button onClick={handleClearChat} className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-600"><TrashIcon className="w-5 h-5 mr-3" />Effacer les messages</button></li>
+                  <li><button onClick={handleExportChat} className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-600"><ExportIcon className="w-5 h-5 mr-3" />Exporter la discussion</button></li>
+                  <div className="h-px bg-gray-600 my-1"></div>
+                  {contact.isBlocked ? (
+                    <li><button onClick={handleUnblock} className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-600"><BlockIcon className="w-5 h-5 mr-3" />Débloquer</button></li>
+                  ) : (
+                    <li><button onClick={handleBlock} className="flex items-center w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-gray-600"><BlockIcon className="w-5 h-5 mr-3" />Bloquer</button></li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col space-y-2">
+      <div 
+        className="flex-1 overflow-y-auto p-4 flex flex-col space-y-2"
+        style={flagBackgroundStyle}
+      >
         {messages.map((msg) => (
           <MessageBubble
             key={msg.id}
@@ -152,30 +338,54 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall })
 
       {/* Input Area */}
       <footer className="p-3 bg-gray-800 border-t border-gray-700 sticky bottom-0">
-        <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
-          <div className="flex-1 flex items-center bg-gray-700 rounded-full px-4">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Message..."
-              className="flex-1 bg-transparent py-3 focus:outline-none text-white"
-            />
-             <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileSelect}
-                className="hidden" 
-                aria-hidden="true"
-             />
-             <button type="button" onClick={handleAttachmentClick} className="p-2 text-gray-400 hover:text-white" aria-label="Attach file">
-                <PaperclipIcon className="w-6 h-6" />
-            </button>
+        {contact.isBlocked ? (
+          <div className="flex flex-col items-center justify-center text-center py-2">
+            <p className="text-gray-400">Vous avez bloqué ce contact.</p>
+            <button onClick={handleUnblock} className="text-cyan-400 font-semibold mt-1 hover:underline">Appuyez pour débloquer</button>
           </div>
-          <button type="submit" className="bg-cyan-500 rounded-full p-3 text-white hover:bg-cyan-600 transition-colors">
-            {newMessage ? <SendIcon className="w-6 h-6" /> : <MicrophoneIcon className="w-6 h-6" />}
-          </button>
-        </form>
+        ) : isRecording ? (
+             <div className="flex items-center space-x-3 w-full">
+                <button type="button" onClick={handleCancelRecording} className="p-3 text-red-500 hover:text-red-400">
+                    <TrashIcon className="w-6 h-6" />
+                </button>
+                <div className="flex-1 flex items-center bg-gray-700 rounded-full px-4 py-3 text-red-400">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-3"></div>
+                    <span className="font-mono">{formatTime(recordingTime)}</span>
+                </div>
+                <button type="button" onClick={handleStopRecording} className="bg-cyan-500 rounded-full p-3 text-white hover:bg-cyan-600 transition-colors">
+                    <StopIcon className="w-6 h-6" />
+                </button>
+            </div>
+        ) : (
+            <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
+            <div className="flex-1 flex items-center bg-gray-700 rounded-full px-4">
+                <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Message..."
+                className="flex-1 bg-transparent py-3 focus:outline-none text-white"
+                />
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileSelect}
+                    className="hidden" 
+                    aria-hidden="true"
+                />
+                <button type="button" onClick={handleAttachmentClick} className="p-2 text-gray-400 hover:text-white" aria-label="Attach file">
+                    <PaperclipIcon className="w-6 h-6" />
+                </button>
+            </div>
+            <button 
+                type={newMessage.trim() ? 'submit' : 'button'}
+                onClick={!newMessage.trim() ? handleStartRecording : undefined}
+                className="bg-cyan-500 rounded-full p-3 text-white hover:bg-cyan-600 transition-colors"
+            >
+                {newMessage.trim() ? <SendIcon className="w-6 h-6" /> : <MicrophoneIcon className="w-6 h-6" />}
+            </button>
+            </form>
+        )}
       </footer>
     </div>
   );

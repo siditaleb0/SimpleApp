@@ -1,12 +1,12 @@
 
 import React from 'react';
 import type { Call, Contact, CallType } from '../types';
-import { mockContacts } from '../constants';
 import { PhoneIcon } from './icons/PhoneIcon';
 import { VideoIcon } from './icons/VideoIcon';
 
 interface CallsListScreenProps {
   calls: Call[];
+  contacts: Contact[];
   onStartCall: (contact: Contact, type: CallType) => void;
 }
 
@@ -21,8 +21,8 @@ const CallDirectionIcon: React.FC<{ direction: 'incoming' | 'outgoing' | 'missed
 };
 
 
-const CallsListScreen: React.FC<CallsListScreenProps> = ({ calls, onStartCall }) => {
-  const findContact = (contactId: number): Contact | undefined => mockContacts.find(c => c.id === contactId);
+const CallsListScreen: React.FC<CallsListScreenProps> = ({ calls, contacts, onStartCall }) => {
+  const findContact = (contactId: number): Contact | undefined => contacts.find(c => c.id === contactId);
 
   return (
     <div className="flex flex-col h-full">

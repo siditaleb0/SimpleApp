@@ -4,6 +4,8 @@ import type { Screen } from '../types';
 import { ChatIcon } from './icons/ChatIcon';
 import { PhoneIcon } from './icons/PhoneIcon';
 import { ContactsIcon } from './icons/ContactsIcon';
+import { SettingsIcon } from './icons/SettingsIcon';
+import { StatusIcon } from './icons/StatusIcon';
 
 interface BottomNavBarProps {
   activeScreen: Screen;
@@ -37,6 +39,12 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeScreen, setActiveScre
         onClick={() => setActiveScreen('chats')}
       />
       <NavItem
+        label="Statut"
+        icon={<StatusIcon className="w-6 h-6" />}
+        isActive={activeScreen === 'status'}
+        onClick={() => setActiveScreen('status')}
+      />
+      <NavItem
         label="Appels"
         icon={<PhoneIcon className="w-6 h-6" />}
         isActive={activeScreen === 'calls'}
@@ -47,6 +55,12 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeScreen, setActiveScre
         icon={<ContactsIcon className="w-6 h-6" />}
         isActive={activeScreen === 'contacts'}
         onClick={() => setActiveScreen('contacts')}
+      />
+      <NavItem
+        label="Réglages"
+        icon={<SettingsIcon className="w-6 h-6" />}
+        isActive={activeScreen === 'settings'}
+        onClick={() => setActiveScreen('settings')}
       />
     </nav>
   );
