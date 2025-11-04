@@ -20,6 +20,7 @@ export interface User {
   };
   appearanceSettings: {
     darkMode: boolean;
+    chatBackground?: string;
   };
   statusUpdates?: StatusUpdate[];
   serverId?: string;

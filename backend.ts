@@ -5,6 +5,7 @@ const USER_KEY = 'simpleapp_user';
 const CONTACTS_KEY = 'simpleapp_contacts';
 const MESSAGES_KEY = 'simpleapp_messages';
 const CALLS_KEY = 'simpleapp_calls';
+const DEFAULT_CHAT_BACKGROUND = "data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 600'%3e%3crect width='900' height='600' fill='%2300A95C'/%3e%3crect width='900' height='90' fill='%23D21034'/%3e%3crect width='900' height='90' y='510' fill='%23D21034'/%3e%3cpath d='M450 135c-99.41 0-180 80.59-180 180h360c0-99.41-80.59-180-180-180zm0 45c74.56 0 135 60.44 135 135H315c0-74.56 60.44-135 135-135z' fill='%23FFD700'/%3e%3cpath d='M450 162.9l-19.4 59.8h-62.9l50.9 36.9-19.4 59.8 50.9-36.9 50.9 36.9-19.4-59.8 50.9-36.9h-62.9z' fill='%23FFD700'/%3e%3c/svg%3e";
 
 const NETWORK_DELAY = 300; // ms
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -24,7 +25,11 @@ export const getUser = (): User | null => {
     modified = true;
   }
   if (typeof user.appearanceSettings === 'undefined') {
-    user.appearanceSettings = { darkMode: true };
+    user.appearanceSettings = { darkMode: true, chatBackground: DEFAULT_CHAT_BACKGROUND };
+    modified = true;
+  }
+  if (typeof user.appearanceSettings.chatBackground === 'undefined') {
+    user.appearanceSettings.chatBackground = DEFAULT_CHAT_BACKGROUND;
     modified = true;
   }
   if (typeof user.phone === 'undefined') {
@@ -70,6 +75,7 @@ export const setupNewUser = (name: string, phone: string, avatarUrl: string): Us
     },
     appearanceSettings: {
       darkMode: true,
+      chatBackground: DEFAULT_CHAT_BACKGROUND,
     },
     statusUpdates: []
   };
@@ -328,3 +334,5 @@ export const importAllData = (jsonString: string): boolean => {
         return false;
     }
 };
+
+export const getDefaultChatBackground = () => DEFAULT_CHAT_BACKGROUND;

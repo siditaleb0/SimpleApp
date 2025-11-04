@@ -119,7 +119,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onUpdateUser, onL
   const settingsItems = [
     { id: 'account', icon: <UserIcon className="w-6 h-6 text-cyan-400" />, label: 'Compte' },
     { id: 'notifications', icon: <BellIcon className="w-6 h-6 text-cyan-400" />, label: 'Notifications', control: <ToggleSwitch enabled={user.notificationSettings?.enabled ?? true} onChange={async (val) => await onUpdateUser({...user, notificationSettings: { enabled: val }})} /> },
-    { id: 'appearance', icon: <MoonIcon className="w-6 h-6 text-cyan-400" />, label: 'Apparence', control: <ToggleSwitch enabled={user.appearanceSettings?.darkMode ?? true} onChange={async (val) => await onUpdateUser({...user, appearanceSettings: { darkMode: val }})} /> },
+    { id: 'appearance', icon: <MoonIcon className="w-6 h-6 text-cyan-400" />, label: 'Apparence' },
     { id: 'privacy', icon: <LockIcon className="w-6 h-6 text-cyan-400" />, label: 'Confidentialité' },
     { id: 'help', icon: <QuestionMarkIcon className="w-6 h-6 text-cyan-400" />, label: 'Aide' },
     { id: 'datasync', icon: <GoogleDriveIcon className="w-6 h-6 text-cyan-400" />, label: 'Données et Synchro' },

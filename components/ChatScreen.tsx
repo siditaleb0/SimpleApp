@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Contact, Message, CallType } from '../types';
+import type { Contact, Message, CallType, User } from '../types';
 import { MessageType } from '../types';
 import * as backend from '../backend';
 import MessageBubble from './MessageBubble';
@@ -22,6 +22,7 @@ import { SpinnerIcon } from './icons/SpinnerIcon';
 
 interface ChatScreenProps {
   contact: Contact;
+  user: User;
   onBack: () => void;
   onStartCall: (contact: Contact, type: CallType) => Promise<void>;
   onArchive: (contactId: number, archiveState: boolean) => Promise<void>;
@@ -30,7 +31,7 @@ interface ChatScreenProps {
   onViewProfile: (contact: Contact) => void;
 }
 
-const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, onArchive, onBlock, onClearChat, onViewProfile }) => {
+const ChatScreen: React.FC<ChatScreenProps> = ({ contact, user, onBack, onStartCall, onArchive, onBlock, onClearChat, onViewProfile }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -301,14 +302,13 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
     setIsMenuOpen(false);
   }
 
-  const flagBackgroundStyle = {
-    backgroundImage: `
-      linear-gradient(rgba(17, 24, 39, 0.85), rgba(17, 24, 39, 0.85)),
-      url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 600'%3e%3crect width='900' height='600' fill='%2300A95C'/%3e%3crect width='900' height='90' fill='%23D21034'/%3e%3crect width='900' height='90' y='510' fill='%23D21034'/%3e%3cpath d='M450 135c-99.41 0-180 80.59-180 180h360c0-99.41-80.59-180-180-180zm0 45c74.56 0 135 60.44 135 135H315c0-74.56 60.44-135 135-135z' fill='%23FFD700'/%3e%3cpath d='M450 162.9l-19.4 59.8h-62.9l50.9 36.9-19.4 59.8 50.9-36.9 50.9 36.9-19.4-59.8 50.9-36.9h-62.9z' fill='%23FFD700'/%3e%3c/svg%3e")
-    `,
+  const backgroundStyle = {
+    backgroundImage: user.appearanceSettings?.chatBackground 
+      ? `linear-gradient(rgba(17, 24, 39, 0.9), rgba(17, 24, 39, 0.9)), url("${user.appearanceSettings.chatBackground}")`
+      : `none`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    backgroundAttachment: 'fixed'
+    backgroundAttachment: 'fixed',
   };
 
   return (
@@ -357,7 +357,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
       {/* Messages Area */}
       <div 
         className="flex-1 overflow-y-auto p-4 flex flex-col space-y-2"
-        style={flagBackgroundStyle}
+        style={backgroundStyle}
       >
         {messages.map((msg) => (
           <MessageBubble

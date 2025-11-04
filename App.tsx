@@ -21,6 +21,7 @@ import ChangeNumberScreen from './components/ChangeNumberScreen';
 import HelpScreen from './components/HelpScreen';
 import DataSyncScreen from './components/DataSyncScreen';
 import DeploymentScreen from './components/DeploymentScreen';
+import AppearanceScreen from './components/AppearanceScreen';
 
 const App: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState<Screen>('chats');
@@ -244,6 +245,8 @@ const App: React.FC = () => {
                 />;
             case 'privacy':
                 return <PrivacyScreen user={user} onUpdateUser={handleUpdateUser} onBack={() => setActiveSubScreen(null)} />;
+            case 'appearance':
+                return <AppearanceScreen user={user} onUpdateUser={handleUpdateUser} onBack={() => setActiveSubScreen(null)} />;
             case 'account':
                 return <AccountScreen user={user} onBack={() => setActiveSubScreen(null)} onChangeNumber={() => setActiveSubScreen('changeNumber')} />;
             case 'changeNumber':
@@ -269,6 +272,7 @@ const App: React.FC = () => {
         <ChatScreen
           key={selectedChat.id}
           contact={selectedChat}
+          user={user}
           onBack={() => {
             setContacts(backend.getContacts());
             setSelectedChat(null);
