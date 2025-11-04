@@ -6,20 +6,58 @@ const CONTACTS_KEY = 'simpleapp_contacts';
 const MESSAGES_KEY = 'simpleapp_messages';
 const CALLS_KEY = 'simpleapp_calls';
 
+const NETWORK_DELAY = 300; // ms
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+
 // --- User ---
 export const getUser = (): User | null => {
-  const user = localStorage.getItem(USER_KEY);
-  return user ? JSON.parse(user) : null;
+  const userStr = localStorage.getItem(USER_KEY);
+  if (!userStr) return null;
+
+  const user = JSON.parse(userStr);
+  
+  // Data migration for existing users
+  let modified = false;
+  if (typeof user.notificationSettings === 'undefined') {
+    user.notificationSettings = { enabled: true };
+    modified = true;
+  }
+  if (typeof user.appearanceSettings === 'undefined') {
+    user.appearanceSettings = { darkMode: true };
+    modified = true;
+  }
+  if (typeof user.phone === 'undefined') {
+    user.phone = 'Numéro inconnu';
+    modified = true;
+  }
+  
+  if (modified) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+  
+  return user;
 };
 
-export const updateUser = (updatedUser: User): User => {
+export const updateUser = async (updatedUser: User): Promise<User> => {
+  await delay(NETWORK_DELAY);
   localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
   return updatedUser;
 };
 
-export const setupNewUser = (name: string, avatarUrl: string): User => {
+export const updateUserServerId = async (serverId: string): Promise<User> => {
+  await delay(NETWORK_DELAY * 2);
+  const user = getUser();
+  if (!user) throw new Error("User not found");
+  const updatedUser = { ...user, serverId };
+  localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+  return updatedUser;
+};
+
+export const setupNewUser = (name: string, phone: string, avatarUrl: string): User => {
   const newUser: User = {
     name: name,
+    phone: phone,
     avatarUrl: avatarUrl,
     status: 'Disponible',
     privacySettings: {
@@ -44,15 +82,51 @@ export const setupNewUser = (name: string, avatarUrl: string): User => {
 
 // --- Contacts ---
 export const getContacts = (): Contact[] => {
-    const contacts = localStorage.getItem(CONTACTS_KEY);
-    return contacts ? JSON.parse(contacts) : [];
+    const contactsStr = localStorage.getItem(CONTACTS_KEY);
+    if (!contactsStr) return [];
+    
+    const contacts = JSON.parse(contactsStr);
+
+    let modified = false;
+    const migratedContacts = contacts.map((c: Contact) => {
+        if(typeof c.phone === 'undefined') {
+            modified = true;
+            return {...c, phone: 'Numéro inconnu'};
+        }
+        return c;
+    });
+
+    if (modified) {
+        saveContacts(migratedContacts);
+    }
+    
+    return migratedContacts;
 };
 
 const saveContacts = (contacts: Contact[]): void => {
     localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
 }
 
-export const archiveContact = (contactId: number, archiveState: boolean): Contact[] => {
+export const addContact = async (name: string, phone: string, avatarUrl: string): Promise<Contact[]> => {
+    await delay(NETWORK_DELAY);
+    const contacts = getContacts();
+    const newContact: Contact = {
+        id: Date.now(),
+        name,
+        phone,
+        avatarUrl,
+        status: 'Hors ligne',
+        isArchived: false,
+        isBlocked: false,
+    };
+    const updatedContacts = [...contacts, newContact];
+    saveContacts(updatedContacts);
+    return updatedContacts;
+};
+
+
+export const archiveContact = async (contactId: number, archiveState: boolean): Promise<Contact[]> => {
+    await delay(NETWORK_DELAY);
     const contacts = getContacts();
     const contactIndex = contacts.findIndex(c => c.id === contactId);
     if (contactIndex > -1) {
@@ -62,7 +136,8 @@ export const archiveContact = (contactId: number, archiveState: boolean): Contac
     return contacts;
 }
 
-export const blockContact = (contactId: number, blockState: boolean): Contact[] => {
+export const blockContact = async (contactId: number, blockState: boolean): Promise<Contact[]> => {
+    await delay(NETWORK_DELAY);
     const contacts = getContacts();
     const contactIndex = contacts.findIndex(c => c.id === contactId);
     if (contactIndex > -1) {
@@ -80,7 +155,8 @@ export const getMessages = (contactId: number): Message[] => {
     return allMessages[contactId] || [];
 };
 
-export const saveMessage = (contactId: number, message: Message): Message[] => {
+export const saveMessage = async (contactId: number, message: Message): Promise<Message[]> => {
+    await delay(NETWORK_DELAY);
     const allMessagesStr = localStorage.getItem(MESSAGES_KEY);
     const allMessages: { [key: number]: Message[] } = allMessagesStr ? JSON.parse(allMessagesStr) : {};
     
@@ -114,7 +190,8 @@ export const saveMessage = (contactId: number, message: Message): Message[] => {
     return allMessages[contactId];
 };
 
-export const clearChat = (contactId: number): void => {
+export const clearChat = async (contactId: number): Promise<void> => {
+    await delay(NETWORK_DELAY);
     const allMessagesStr = localStorage.getItem(MESSAGES_KEY);
     const allMessages: { [key: number]: Message[] } = allMessagesStr ? JSON.parse(allMessagesStr) : {};
     
@@ -133,7 +210,8 @@ export const clearChat = (contactId: number): void => {
     }
 };
 
-export const updateMessageReactions = (contactId: number, messageId: number, emoji: string): Message[] => {
+export const updateMessageReactions = async (contactId: number, messageId: number, emoji: string): Promise<Message[]> => {
+    await delay(NETWORK_DELAY / 2);
     const allMessagesStr = localStorage.getItem(MESSAGES_KEY);
     const allMessages: { [key: number]: Message[] } = allMessagesStr ? JSON.parse(allMessagesStr) : {};
     
@@ -174,7 +252,8 @@ export const getCalls = (): Call[] => {
     return calls ? JSON.parse(calls) : [];
 };
 
-export const addCall = (call: Omit<Call, 'id'>): Call[] => {
+export const addCall = async (call: Omit<Call, 'id'>): Promise<Call[]> => {
+    await delay(NETWORK_DELAY);
     const calls = getCalls();
     const newCall: Call = { ...call, id: Date.now() };
     const updatedCalls = [newCall, ...calls];
@@ -183,7 +262,8 @@ export const addCall = (call: Omit<Call, 'id'>): Call[] => {
 };
 
 // --- Status ---
-export const addUserStatusUpdate = (update: Omit<StatusUpdate, 'id'>): User => {
+export const addUserStatusUpdate = async (update: Omit<StatusUpdate, 'id'>): Promise<User> => {
+    await delay(NETWORK_DELAY);
     const user = getUser();
     if (!user) throw new Error("User not found");
     const newStatus: StatusUpdate = { ...update, id: Date.now() };
@@ -191,11 +271,12 @@ export const addUserStatusUpdate = (update: Omit<StatusUpdate, 'id'>): User => {
         user.statusUpdates = [];
     }
     user.statusUpdates.push(newStatus);
-    updateUser(user);
+    await updateUser(user);
     return user;
 };
 
-export const markStatusAsViewed = (contactId: number, statusId: number): Contact[] => {
+export const markStatusAsViewed = async (contactId: number, statusId: number): Promise<Contact[]> => {
+    await delay(NETWORK_DELAY / 2);
     const contacts = getContacts();
     const contactIndex = contacts.findIndex(c => c.id === contactId);
     if (contactIndex > -1 && contacts[contactIndex].statusUpdates) {

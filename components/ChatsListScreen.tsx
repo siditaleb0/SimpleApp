@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { Contact, Screen } from '../types';
 import ChatListItem from './ChatListItem';
 import { MoreVertIcon } from './icons/MoreVertIcon';
+import { ArchiveIcon } from './icons/ArchiveIcon';
 import { SearchIcon } from './icons/SearchIcon';
 import { AppLogo } from './icons/AppLogo';
-import { ArchiveIcon } from './icons/ArchiveIcon';
 
 interface ChatsListScreenProps {
   contacts: Contact[];
@@ -30,9 +30,12 @@ const ChatsListScreen: React.FC<ChatsListScreenProps> = ({ contacts, onSelectCha
     };
   }, [menuRef]);
 
-  const nonArchivedContacts = contacts.filter(contact => 
-    !contact.isArchived && contact.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredContacts = contacts.filter(contact => 
+    !contact.isArchived &&
+    (contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     (contact.lastMessage && contact.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())))
   );
+  
   const archivedCount = contacts.filter(c => c.isArchived).length;
 
   return (
@@ -55,16 +58,15 @@ const ChatsListScreen: React.FC<ChatsListScreenProps> = ({ contacts, onSelectCha
           </div>
         </div>
         <div className="relative">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <SearchIcon className="w-5 h-5 text-gray-400" />
-          </span>
+          </div>
           <input
             type="text"
+            placeholder="Rechercher une discussion..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher une discussion..."
-            aria-label="Rechercher une discussion"
-            className="w-full bg-gray-700 text-white rounded-full py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-shadow"
+            className="w-full bg-gray-700 text-white rounded-lg p-2 pl-10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
         </div>
       </header>
@@ -80,7 +82,7 @@ const ChatsListScreen: React.FC<ChatsListScreenProps> = ({ contacts, onSelectCha
             </div>
           </li>
         )}
-        {nonArchivedContacts.map((contact) => (
+        {filteredContacts.map((contact) => (
           <ChatListItem key={contact.id} contact={contact} onSelect={onSelectChat} />
         ))}
       </ul>

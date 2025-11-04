@@ -1,16 +1,21 @@
 import React from 'react';
 import type { Contact } from '../types';
+import { UserAddIcon } from './icons/UserAddIcon';
 
 interface ContactsListScreenProps {
   contacts: Contact[];
   onSelectContact: (contact: Contact) => void;
+  onAddContact: () => void;
 }
 
-const ContactsListScreen: React.FC<ContactsListScreenProps> = ({ contacts, onSelectContact }) => {
+const ContactsListScreen: React.FC<ContactsListScreenProps> = ({ contacts, onSelectContact, onAddContact }) => {
   return (
     <div className="flex flex-col h-full">
-      <header className="flex justify-between items-center p-4 bg-gray-800 border-b border-gray-700 sticky top-0">
+      <header className="flex justify-between items-center p-4 bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
         <h1 className="text-2xl font-bold">Contacts</h1>
+        <button onClick={onAddContact} className="p-2 rounded-full hover:bg-gray-700">
+          <UserAddIcon className="w-6 h-6" />
+        </button>
       </header>
       <ul className="flex-1 overflow-y-auto">
         {contacts.sort((a, b) => a.name.localeCompare(b.name)).map((contact) => {

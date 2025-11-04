@@ -8,11 +8,8 @@ import { QuestionMarkIcon } from './icons/QuestionMarkIcon';
 import { LogoutIcon } from './icons/LogoutIcon';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
 import { PencilIcon } from './icons/PencilIcon';
-import PrivacyScreen from './PrivacyScreen';
-import AccountScreen from './AccountScreen';
-import HelpScreen from './HelpScreen';
 import { GoogleDriveIcon } from './icons/GoogleDriveIcon';
-import DataSyncScreen from './DataSyncScreen';
+import { RocketIcon } from './icons/RocketIcon';
 
 interface ProfileEditModalProps {
   user: User;
@@ -106,43 +103,27 @@ const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) =>
 
 interface SettingsScreenProps {
   user: User;
-  onUpdateUser: (user: User) => void;
+  onUpdateUser: (user: User) => Promise<void>;
   onLogout: () => void;
-  onRestore: (jsonData: string) => void;
+  onNavigate: (screen: string) => void;
 }
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onUpdateUser, onLogout, onRestore }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onUpdateUser, onLogout, onNavigate }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeSubScreen, setActiveSubScreen] = useState<string | null>(null);
 
-  const handleSaveProfile = (updatedUser: User) => {
-    onUpdateUser(updatedUser);
+  const handleSaveProfile = async (updatedUser: User) => {
+    await onUpdateUser(updatedUser);
     setIsEditModalOpen(false);
   };
   
-  if (activeSubScreen === 'privacy') {
-    return <PrivacyScreen user={user} onUpdateUser={onUpdateUser} onBack={() => setActiveSubScreen(null)} />;
-  }
-
-  if (activeSubScreen === 'account') {
-    return <AccountScreen onBack={() => setActiveSubScreen(null)} />;
-  }
-  
-  if (activeSubScreen === 'help') {
-    return <HelpScreen onBack={() => setActiveSubScreen(null)} />;
-  }
-  
-  if (activeSubScreen === 'datasync') {
-    return <DataSyncScreen onBack={() => setActiveSubScreen(null)} onRestore={onRestore} />;
-  }
-
   const settingsItems = [
     { id: 'account', icon: <UserIcon className="w-6 h-6 text-cyan-400" />, label: 'Compte' },
-    { id: 'notifications', icon: <BellIcon className="w-6 h-6 text-cyan-400" />, label: 'Notifications', control: <ToggleSwitch enabled={user.notificationSettings?.enabled ?? true} onChange={(val) => onUpdateUser({...user, notificationSettings: { enabled: val }})} /> },
-    { id: 'appearance', icon: <MoonIcon className="w-6 h-6 text-cyan-400" />, label: 'Apparence', control: <ToggleSwitch enabled={user.appearanceSettings?.darkMode ?? true} onChange={(val) => onUpdateUser({...user, appearanceSettings: { darkMode: val }})} /> },
+    { id: 'notifications', icon: <BellIcon className="w-6 h-6 text-cyan-400" />, label: 'Notifications', control: <ToggleSwitch enabled={user.notificationSettings?.enabled ?? true} onChange={async (val) => await onUpdateUser({...user, notificationSettings: { enabled: val }})} /> },
+    { id: 'appearance', icon: <MoonIcon className="w-6 h-6 text-cyan-400" />, label: 'Apparence', control: <ToggleSwitch enabled={user.appearanceSettings?.darkMode ?? true} onChange={async (val) => await onUpdateUser({...user, appearanceSettings: { darkMode: val }})} /> },
     { id: 'privacy', icon: <LockIcon className="w-6 h-6 text-cyan-400" />, label: 'Confidentialité' },
     { id: 'help', icon: <QuestionMarkIcon className="w-6 h-6 text-cyan-400" />, label: 'Aide' },
     { id: 'datasync', icon: <GoogleDriveIcon className="w-6 h-6 text-cyan-400" />, label: 'Données et Synchro' },
+    { id: 'deploy', icon: <RocketIcon className="w-6 h-6 text-cyan-400" />, label: 'Déployer l\'application' },
   ];
 
   return (
@@ -181,12 +162,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onUpdateUser, onL
                 return (
                   <li key={item.id}>
                     <button 
-                        onClick={() => {
-                            if (item.id === 'privacy') setActiveSubScreen('privacy');
-                            if (item.id === 'account') setActiveSubScreen('account');
-                            if (item.id === 'help') setActiveSubScreen('help');
-                            if (item.id === 'datasync') setActiveSubScreen('datasync');
-                        }} 
+                        onClick={() => onNavigate(item.id)} 
                         className={`${liClassName} w-full text-left transition-colors hover:bg-gray-700`}
                     >
                       <div className="mr-4">{item.icon}</div>

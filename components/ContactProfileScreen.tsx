@@ -32,10 +32,14 @@ const ContactProfileScreen: React.FC<ContactProfileScreenProps> = ({ contact, on
             <h2 className="text-3xl font-bold">{contact.name}</h2>
         </div>
 
-        <div className="px-4">
+        <div className="px-4 space-y-4">
             <div className="bg-gray-800 rounded-lg p-4">
                 <h3 className="text-gray-400 text-sm font-semibold mb-2">Statut</h3>
                 <p className="text-white">{contact.status}</p>
+            </div>
+             <div className="bg-gray-800 rounded-lg p-4">
+                <h3 className="text-gray-400 text-sm font-semibold mb-2">Téléphone</h3>
+                <p className="text-white">{contact.phone}</p>
             </div>
         </div>
       </div>

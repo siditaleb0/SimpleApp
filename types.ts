@@ -11,6 +11,7 @@ export interface PrivacySettings {
 
 export interface User {
   name: string;
+  phone: string;
   avatarUrl: string;
   status: string;
   privacySettings: PrivacySettings;
@@ -21,6 +22,7 @@ export interface User {
     darkMode: boolean;
   };
   statusUpdates?: StatusUpdate[];
+  serverId?: string;
 }
 
 export interface StatusUpdate {
@@ -33,6 +35,7 @@ export interface StatusUpdate {
 export interface Contact {
   id: number;
   name:string;
+  phone: string;
   avatarUrl: string;
   status: string;
   lastMessage?: string;
@@ -78,3 +81,9 @@ export interface Call {
 }
 
 export type Screen = 'chats' | 'status' | 'calls' | 'contacts' | 'settings';
+
+export interface Country {
+  name: string;
+  code: string;
+  dialCode: string;
+}

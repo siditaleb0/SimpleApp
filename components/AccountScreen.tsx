@@ -1,18 +1,53 @@
-
 import React from 'react';
+import type { User } from '../types';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 import { PhoneSwitchIcon } from './icons/PhoneSwitchIcon';
 import { InfoIcon } from './icons/InfoIcon';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
 
 interface AccountScreenProps {
+  user: User;
   onBack: () => void;
+  onChangeNumber: () => void;
 }
 
-const AccountScreen: React.FC<AccountScreenProps> = ({ onBack }) => {
+const AccountScreen: React.FC<AccountScreenProps> = ({ user, onBack, onChangeNumber }) => {
+    
+    const handleRequestInfo = () => {
+        const report = `
+Rapport d'informations du compte SimpleApp
+-----------------------------------------
+Exporté le: ${new Date().toLocaleString('fr-FR')}
+
+Profil
+-------
+Nom: ${user.name}
+Numéro de téléphone: ${user.phone}
+Statut: ${user.status}
+
+Paramètres
+----------
+Confirmations de lecture: ${user.privacySettings.readReceipts ? 'Activé' : 'Désactivé'}
+Dernière visite visible par: ${user.privacySettings.lastSeen}
+Photo de profil visible par: ${user.privacySettings.profilePhoto}
+Notifications: ${user.notificationSettings.enabled ? 'Activé' : 'Désactivé'}
+Mode sombre: ${user.appearanceSettings.darkMode ? 'Activé' : 'Désactivé'}
+    `.trim();
+
+        const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `simpleapp_info_compte.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     const accountItems = [
-        { id: 'change-number', icon: <PhoneSwitchIcon className="w-6 h-6 text-cyan-400" />, label: 'Changer de numéro', description: 'Migrez votre compte vers un nouveau numéro.' },
-        { id: 'request-info', icon: <InfoIcon className="w-6 h-6 text-cyan-400" />, label: 'Demander les informations du compte', description: 'Obtenez un rapport de vos informations.' },
+        { id: 'change-number', icon: <PhoneSwitchIcon className="w-6 h-6 text-cyan-400" />, label: 'Changer de numéro', description: 'Migrez votre compte vers un nouveau numéro.', action: onChangeNumber },
+        { id: 'request-info', icon: <InfoIcon className="w-6 h-6 text-cyan-400" />, label: 'Demander les informations du compte', description: 'Obtenez un rapport de vos informations.', action: handleRequestInfo },
     ];
 
     return (
@@ -34,6 +69,10 @@ const AccountScreen: React.FC<AccountScreenProps> = ({ onBack }) => {
             </header>
 
             <div className="flex-1 overflow-y-auto p-4">
+                <div className="bg-gray-800 rounded-lg p-4 mb-6">
+                    <h3 className="text-gray-400 text-sm font-semibold mb-1">Votre numéro de téléphone</h3>
+                    <p className="text-white text-lg">{user.phone}</p>
+                </div>
                 <div className="bg-gray-800 rounded-lg">
                     <ul>
                         {accountItems.map((item, index) => {
@@ -43,6 +82,7 @@ const AccountScreen: React.FC<AccountScreenProps> = ({ onBack }) => {
                             return (
                                 <li key={item.id}>
                                     <button 
+                                        onClick={item.action}
                                         className={`${commonClasses} ${hoverClass}`}
                                     >
                                         <div className="mr-4">{item.icon}</div>

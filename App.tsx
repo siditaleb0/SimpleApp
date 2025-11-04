@@ -13,6 +13,14 @@ import ArchivedChatsScreen from './components/ArchivedChatsScreen';
 import ContactProfileScreen from './components/ContactProfileScreen';
 import StatusViewer from './components/StatusViewer';
 import OnboardingScreen from './components/OnboardingScreen';
+import AddContactScreen from './components/AddContactScreen';
+import PhoneValidationScreen from './components/PhoneValidationScreen';
+import PrivacyScreen from './components/PrivacyScreen';
+import AccountScreen from './components/AccountScreen';
+import ChangeNumberScreen from './components/ChangeNumberScreen';
+import HelpScreen from './components/HelpScreen';
+import DataSyncScreen from './components/DataSyncScreen';
+import DeploymentScreen from './components/DeploymentScreen';
 
 const App: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState<Screen>('chats');
@@ -27,16 +35,14 @@ const App: React.FC = () => {
   const [calls, setCalls] = useState<Call[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Onboarding flow state
+  const [onboardingStep, setOnboardingStep] = useState<'profile' | 'validation'>('profile');
+  const [pendingProfile, setPendingProfile] = useState<{ name: string; phone: string; avatarUrl: string } | null>(null);
+
+
   useEffect(() => {
     const existingUser = backend.getUser();
     if (existingUser) {
-        // Data migration for new settings
-        if (typeof existingUser.notificationSettings === 'undefined') {
-          existingUser.notificationSettings = { enabled: true };
-        }
-        if (typeof existingUser.appearanceSettings === 'undefined') {
-          existingUser.appearanceSettings = { darkMode: true };
-        }
         setUser(existingUser);
         setContacts(backend.getContacts());
         setCalls(backend.getCalls());
@@ -44,15 +50,33 @@ const App: React.FC = () => {
     setIsLoading(false);
   }, []);
 
-  const handleCreateProfile = (name: string, avatarUrl: string) => {
-    const newUser = backend.setupNewUser(name, avatarUrl);
-    setUser(newUser);
-    setContacts(backend.getContacts());
-    setCalls(backend.getCalls());
+  const handleProfileSubmit = (name: string, phone: string, avatarUrl: string) => {
+    setPendingProfile({ name, phone, avatarUrl });
+    setOnboardingStep('validation');
   };
 
-  const handleUpdateUser = (updatedUser: User) => {
-    const savedUser = backend.updateUser(updatedUser);
+  const handleValidationComplete = () => {
+    if (pendingProfile) {
+      const newUser = backend.setupNewUser(pendingProfile.name, pendingProfile.phone, pendingProfile.avatarUrl);
+      setUser(newUser);
+      setContacts(backend.getContacts());
+      setCalls(backend.getCalls());
+      // Reset onboarding state
+      setPendingProfile(null);
+      setOnboardingStep('profile');
+    }
+  };
+
+  const handleUpdateUser = async (updatedUser: User) => {
+    const savedUser = await backend.updateUser(updatedUser);
+    setUser(savedUser);
+    if (activeSubScreen === 'changeNumber') {
+        setActiveSubScreen('account');
+    }
+  };
+  
+  const handleUpdateUserServerId = async (serverId: string) => {
+    const savedUser = await backend.updateUserServerId(serverId);
     setUser(savedUser);
   };
   
@@ -68,6 +92,7 @@ const App: React.FC = () => {
       setActiveSubScreen(null);
       setProfileContact(null);
       setViewingStatusContact(null);
+      setOnboardingStep('profile'); // Reset onboarding flow on logout
     }
   }
 
@@ -94,7 +119,7 @@ const App: React.FC = () => {
   };
 
 
-  const handleStartCall = (contact: Contact, type: CallType) => {
+  const handleStartCall = async (contact: Contact, type: CallType) => {
     if (contact.isBlocked) {
         alert("Vous ne pouvez pas appeler un contact bloqué.");
         return;
@@ -105,23 +130,23 @@ const App: React.FC = () => {
       direction: 'outgoing',
       timestamp: new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     };
-    const updatedCalls = backend.addCall(newCall);
+    const updatedCalls = await backend.addCall(newCall);
     setCalls(updatedCalls);
     setActiveCall({ contact, type });
     setSelectedChat(null); 
   };
   
-  const handleAddUserStatus = (imageUrl: string) => {
+  const handleAddUserStatus = async (imageUrl: string) => {
     const newStatus: Omit<StatusUpdate, 'id'> = {
       imageUrl,
       timestamp: "À l'instant",
     };
-    const updatedUser = backend.addUserStatusUpdate(newStatus);
+    const updatedUser = await backend.addUserStatusUpdate(newStatus);
     setUser(updatedUser);
   };
 
-  const handleViewStatus = (contactId: number, statusId: number) => {
-    const updatedContacts = backend.markStatusAsViewed(contactId, statusId);
+  const handleViewStatus = async (contactId: number, statusId: number) => {
+    const updatedContacts = await backend.markStatusAsViewed(contactId, statusId);
     setContacts(updatedContacts);
   };
 
@@ -129,15 +154,15 @@ const App: React.FC = () => {
     setViewingStatusContact(contact);
   };
 
-  const handleArchiveContact = (contactId: number, archiveState: boolean) => {
-    const updatedContacts = backend.archiveContact(contactId, archiveState);
+  const handleArchiveContact = async (contactId: number, archiveState: boolean) => {
+    const updatedContacts = await backend.archiveContact(contactId, archiveState);
     setContacts(updatedContacts);
     setSelectedChat(null);
     setActiveSubScreen(null);
   };
 
-  const handleBlockContact = (contactId: number, blockState: boolean) => {
-    const updatedContacts = backend.blockContact(contactId, blockState);
+  const handleBlockContact = async (contactId: number, blockState: boolean) => {
+    const updatedContacts = await backend.blockContact(contactId, blockState);
     setContacts(updatedContacts);
     if (selectedChat?.id === contactId) {
         const updatedSelectedChat = updatedContacts.find(c => c.id === contactId);
@@ -145,13 +170,19 @@ const App: React.FC = () => {
     }
   };
 
-  const handleClearChat = (contactId: number) => {
-    backend.clearChat(contactId);
+  const handleClearChat = async (contactId: number) => {
+    await backend.clearChat(contactId);
     setContacts(backend.getContacts());
     if (selectedChat?.id === contactId) {
         const currentContact = contacts.find(c => c.id === contactId);
         if(currentContact) setSelectedChat({...currentContact, lastMessage: '', lastMessageTime: ''});
     }
+  };
+
+  const handleAddNewContact = async (name: string, phone: string, avatarUrl: string) => {
+    const updatedContacts = await backend.addContact(name, phone, avatarUrl);
+    setContacts(updatedContacts);
+    setActiveSubScreen(null); // Go back to contacts list
   };
 
 
@@ -160,7 +191,10 @@ const App: React.FC = () => {
   }
   
   if (!user) {
-    return <OnboardingScreen onProfileCreate={handleCreateProfile} />;
+    if (onboardingStep === 'validation') {
+      return <PhoneValidationScreen onValidationComplete={handleValidationComplete} />;
+    }
+    return <OnboardingScreen onProfileSubmit={handleProfileSubmit} />;
   }
 
 
@@ -183,22 +217,50 @@ const App: React.FC = () => {
       );
     }
     
-    if (activeSubScreen === 'archived') {
-        return <ArchivedChatsScreen 
-            contacts={contacts.filter(c => c.isArchived)} 
-            onSelectChat={(contact) => {
-                setSelectedChat(contact);
-                setActiveSubScreen(null);
-            }}
-            onBack={() => setActiveSubScreen(null)}
-        />;
-    }
-
-    if (activeSubScreen === 'contactProfile' && profileContact) {
-        return <ContactProfileScreen 
-            contact={profileContact} 
-            onBack={() => setActiveSubScreen(null)}
-        />;
+    // Sub-screen rendering
+    if (activeSubScreen) {
+        switch (activeSubScreen) {
+            case 'archived':
+                return <ArchivedChatsScreen 
+                    contacts={contacts.filter(c => c.isArchived)} 
+                    onSelectChat={(contact) => {
+                        setSelectedChat(contact);
+                        setActiveSubScreen(null);
+                    }}
+                    onBack={() => setActiveSubScreen(null)}
+                />;
+            case 'contactProfile':
+                if (profileContact) {
+                    return <ContactProfileScreen 
+                        contact={profileContact} 
+                        onBack={() => setActiveSubScreen(null)}
+                    />;
+                }
+                break;
+            case 'addContact':
+                 return <AddContactScreen
+                    onSave={handleAddNewContact}
+                    onBack={() => setActiveSubScreen(null)}
+                />;
+            case 'privacy':
+                return <PrivacyScreen user={user} onUpdateUser={handleUpdateUser} onBack={() => setActiveSubScreen(null)} />;
+            case 'account':
+                return <AccountScreen user={user} onBack={() => setActiveSubScreen(null)} onChangeNumber={() => setActiveSubScreen('changeNumber')} />;
+            case 'changeNumber':
+                return <ChangeNumberScreen 
+                    user={user} 
+                    onBack={() => setActiveSubScreen('account')} 
+                    onSave={async (newPhone) => {
+                        await handleUpdateUser({...user, phone: newPhone});
+                    }}
+                />;
+            case 'help':
+                return <HelpScreen onBack={() => setActiveSubScreen(null)} />;
+            case 'datasync':
+                return <DataSyncScreen user={user} onBack={() => setActiveSubScreen(null)} onRestore={handleRestoreData} onUpdateServerId={handleUpdateUserServerId} />;
+            case 'deploy':
+                return <DeploymentScreen onBack={() => setActiveSubScreen(null)} />;
+        }
     }
 
 
@@ -236,9 +298,14 @@ const App: React.FC = () => {
       case 'calls':
         return <CallsListScreen calls={calls} contacts={contacts} onStartCall={handleStartCall} />;
       case 'contacts':
-        return <ContactsListScreen contacts={contacts} onSelectContact={setSelectedChat} />;
+        return <ContactsListScreen contacts={contacts} onSelectContact={setSelectedChat} onAddContact={() => setActiveSubScreen('addContact')} />;
       case 'settings':
-        return <SettingsScreen user={user} onUpdateUser={handleUpdateUser} onLogout={handleLogout} onRestore={handleRestoreData} />;
+        return <SettingsScreen 
+                    user={user} 
+                    onUpdateUser={handleUpdateUser} 
+                    onLogout={handleLogout} 
+                    onNavigate={setActiveSubScreen} 
+                />;
       default:
         return <ChatsListScreen 
                     contacts={contacts} 

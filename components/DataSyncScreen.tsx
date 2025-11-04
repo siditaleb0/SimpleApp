@@ -1,15 +1,21 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
+import type { User } from '../types';
 import * as backend from '../backend';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 import { GoogleDriveIcon } from './icons/GoogleDriveIcon';
+import { SpinnerIcon } from './icons/SpinnerIcon';
 
 interface DataSyncScreenProps {
+  user: User;
   onBack: () => void;
   onRestore: (jsonData: string) => void;
+  onUpdateServerId: (serverId: string) => Promise<void>;
 }
 
-const DataSyncScreen: React.FC<DataSyncScreenProps> = ({ onBack, onRestore }) => {
+const DataSyncScreen: React.FC<DataSyncScreenProps> = ({ user, onBack, onRestore, onUpdateServerId }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [serverIdInput, setServerIdInput] = useState(user.serverId || '');
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleBackup = () => {
         const jsonData = backend.exportAllData();
@@ -46,6 +52,13 @@ const DataSyncScreen: React.FC<DataSyncScreenProps> = ({ onBack, onRestore }) =>
         if(event.target) event.target.value = '';
     };
 
+    const handleServerIdSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        await onUpdateServerId(serverIdInput);
+        setIsSaving(false);
+    };
+
     return (
         <div className="flex flex-col h-full bg-gray-900 text-white animate-slide-in">
              <style>{`
@@ -63,7 +76,36 @@ const DataSyncScreen: React.FC<DataSyncScreenProps> = ({ onBack, onRestore }) =>
                 </button>
                 <h1 className="text-xl font-bold">Données et Synchro</h1>
             </header>
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                
+                {/* Server Connection Section */}
+                <div className="bg-gray-800 rounded-lg p-4 text-center">
+                    <h2 className="text-xl font-bold mb-2">Connexion au Serveur Simulée</h2>
+                    <p className="text-gray-400 mb-4">
+                        Connectez votre profil à un identifiant de serveur pour simuler la persistance des données en ligne.
+                    </p>
+                    <form onSubmit={handleServerIdSave} className="space-y-4">
+                        <input
+                            type="text"
+                            value={serverIdInput}
+                            onChange={(e) => setServerIdInput(e.target.value)}
+                            placeholder="Entrez votre ID de serveur"
+                            className="w-full bg-gray-700 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-center"
+                        />
+                        <button
+                            type="submit"
+                            disabled={isSaving || serverIdInput === (user.serverId || '')}
+                            className="w-full p-3 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                            {isSaving ? <SpinnerIcon className="w-5 h-5" /> : 'Enregistrer l\'ID du Serveur'}
+                        </button>
+                    </form>
+                    {user.serverId && (
+                        <p className="text-green-400 text-sm mt-4">Connecté au serveur: {user.serverId}</p>
+                    )}
+                </div>
+
+                {/* Backup and Restore Section */}
                 <div className="bg-gray-800 rounded-lg p-4 text-center">
                     <GoogleDriveIcon className="w-16 h-16 text-cyan-400 mx-auto mb-4" />
                     <h2 className="text-xl font-bold mb-2">Sauvegarde et Restauration</h2>
@@ -72,7 +114,7 @@ const DataSyncScreen: React.FC<DataSyncScreenProps> = ({ onBack, onRestore }) =>
                     </p>
                     <div className="space-y-4">
                         <button onClick={handleBackup} className="w-full p-3 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition-colors">
-                            Sauvegarder (Simulé)
+                            Sauvegarder les données
                         </button>
                         <button onClick={handleRestoreClick} className="w-full p-3 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-colors">
                             Restaurer une sauvegarde

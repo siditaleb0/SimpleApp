@@ -5,6 +5,7 @@ export const mockContacts: Contact[] = [
   {
     id: 1,
     name: 'Alice Dubois',
+    phone: '+33 6 12 34 56 78',
     avatarUrl: 'https://picsum.photos/id/1011/200/200',
     status: 'En ligne',
     lastMessage: 'Ok, à tout à l\'heure !',
@@ -20,6 +21,7 @@ export const mockContacts: Contact[] = [
   {
     id: 2,
     name: 'Benjamin Lemoine',
+    phone: '+33 6 87 65 43 21',
     avatarUrl: 'https://picsum.photos/id/1012/200/200',
     status: 'Dernière visite hier à 20:15',
     lastMessage: 'Photo: Un magnifique coucher de soleil',
@@ -33,6 +35,7 @@ export const mockContacts: Contact[] = [
   {
     id: 3,
     name: 'Chloé Martin',
+    phone: '+33 7 00 11 22 33',
     avatarUrl: 'https://picsum.photos/id/1027/200/200',
     status: 'Écrit...',
     lastMessage: 'Oui, c\'est une excellente idée.',
@@ -43,6 +46,7 @@ export const mockContacts: Contact[] = [
   {
     id: 4,
     name: 'David Garcia',
+    phone: '+33 6 99 88 77 66',
     avatarUrl: 'https://picsum.photos/id/1005/200/200',
     status: 'En ligne',
     lastMessage: 'Message vocal (0:45)',
@@ -53,6 +57,7 @@ export const mockContacts: Contact[] = [
     {
     id: 5,
     name: 'Émilie Petit',
+    phone: '+33 7 55 44 33 22',
     avatarUrl: 'https://picsum.photos/id/1013/200/200',
     status: 'Dernière visite il y a 2h',
     lastMessage: 'Document: Rapport_Final.pdf',
@@ -66,6 +71,7 @@ export const mockContacts: Contact[] = [
    {
     id: 6,
     name: 'Maman',
+    phone: '+33 6 01 02 03 04',
     avatarUrl: 'https://picsum.photos/id/1016/200/200',
     status: 'En ligne',
     lastMessage: 'Appelle-moi quand tu peux ❤️',
@@ -75,6 +81,17 @@ export const mockContacts: Contact[] = [
       { id: 1, imageUrl: 'https://picsum.photos/id/61/1080/1920', timestamp: 'Il y a 6 heures', viewed: true }
     ],
     isArchived: true,
+    isBlocked: false,
+  },
+  {
+    id: 7,
+    name: 'Ahmed Fall',
+    phone: '+222 45 25 12 34',
+    avatarUrl: 'https://picsum.photos/id/1025/200/200',
+    status: 'En voyage',
+    lastMessage: 'Salam! Ça va?',
+    lastMessageTime: '10:05',
+    isArchived: false,
     isBlocked: false,
   },
 ];
@@ -95,6 +112,10 @@ export const mockMessages: { [key: number]: Message[] } = {
      { id: 3, senderId: 4, type: MessageType.FILE, text: '', timestamp: '14:52', fileInfo: { name: 'Analyse_Q2.docx', size: '1.2 MB' } },
     { id: 4, senderId: 0, text: 'Merci ! Je vais y jeter un oeil.', timestamp: '14:53', type: MessageType.TEXT },
     { id: 5, senderId: 4, type: MessageType.VOICE, text: '', timestamp: '14:55', voiceDuration: '0:45' },
+  ],
+  7: [
+    { id: 1, senderId: 7, text: 'Salam! Ça va?', timestamp: '10:05', type: MessageType.TEXT },
+    { id: 2, senderId: 0, text: 'Wa alaikum salam! Ça va bien, alhamdulillah. Et toi?', timestamp: '10:06', type: MessageType.TEXT },
   ]
 };
 

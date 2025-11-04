@@ -17,15 +17,16 @@ import { ArchiveIcon } from './icons/ArchiveIcon';
 import { UnarchiveIcon } from './icons/UnarchiveIcon';
 import { UserIcon } from './icons/UserIcon';
 import { BlockIcon } from './icons/BlockIcon';
+import { SpinnerIcon } from './icons/SpinnerIcon';
 
 
 interface ChatScreenProps {
   contact: Contact;
   onBack: () => void;
-  onStartCall: (contact: Contact, type: CallType) => void;
-  onArchive: (contactId: number, archiveState: boolean) => void;
-  onBlock: (contactId: number, blockState: boolean) => void;
-  onClearChat: (contactId: number) => void;
+  onStartCall: (contact: Contact, type: CallType) => Promise<void>;
+  onArchive: (contactId: number, archiveState: boolean) => Promise<void>;
+  onBlock: (contactId: number, blockState: boolean) => Promise<void>;
+  onClearChat: (contactId: number) => Promise<void>;
   onViewProfile: (contact: Contact) => void;
 }
 
@@ -35,6 +36,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -84,9 +86,11 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
     };
 }, [isRecording]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === '') return;
+    if (newMessage.trim() === '' || isSending) return;
+
+    setIsSending(true);
 
     const message: Message = {
       id: Date.now(),
@@ -95,13 +99,15 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
       timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       type: MessageType.TEXT,
     };
-    const updatedMessages = backend.saveMessage(contact.id, message);
-    setMessages(updatedMessages);
+    
     setNewMessage('');
+    const updatedMessages = await backend.saveMessage(contact.id, message);
+    setMessages(updatedMessages);
+    setIsSending(false);
   };
 
-  const handleReaction = (messageId: number, emoji: string) => {
-    const updatedMessages = backend.updateMessageReactions(contact.id, messageId, emoji);
+  const handleReaction = async (messageId: number, emoji: string) => {
+    const updatedMessages = await backend.updateMessageReactions(contact.id, messageId, emoji);
     setMessages(updatedMessages);
   };
 
@@ -117,7 +123,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const message: Message = {
@@ -131,7 +137,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
           size: formatFileSize(file.size),
         },
       };
-      const updatedMessages = backend.saveMessage(contact.id, message);
+      const updatedMessages = await backend.saveMessage(contact.id, message);
       setMessages(updatedMessages);
       
       if(e.target) {
@@ -188,6 +194,18 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
 
     const handleStartRecording = async () => {
         try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("La fonctionnalité d'enregistrement audio n'est pas supportée par votre navigateur.");
+                return;
+            }
+
+            const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+
+            if (permissionStatus.state === 'denied') {
+                alert("L'accès au microphone est bloqué. Veuillez l'autoriser dans les paramètres de votre navigateur pour ce site afin d'enregistrer des messages vocaux.");
+                return;
+            }
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorderRef.current = new MediaRecorder(stream);
             audioChunksRef.current = [];
@@ -209,10 +227,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
                     voiceDuration: formatTime(recordingTime),
                     audioData: audioData,
                 };
-                const updatedMessages = backend.saveMessage(contact.id, message);
+                const updatedMessages = await backend.saveMessage(contact.id, message);
                 setMessages(updatedMessages);
 
-                // Clean up
                 stream.getTracks().forEach(track => track.stop());
                 setIsRecording(false);
             };
@@ -221,7 +238,24 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
             setIsRecording(true);
         } catch (err) {
             console.error("Error accessing microphone:", err);
-            alert("Impossible d'accéder au microphone. Veuillez vérifier les autorisations.");
+            
+            let errorMessage = "Une erreur inattendue est survenue lors de l'accès au microphone.";
+            if (err instanceof Error) {
+                switch (err.name) {
+                    case 'NotAllowedError':
+                        errorMessage = "Vous avez refusé l'accès au microphone. L'autorisation est nécessaire pour enregistrer des messages vocaux.";
+                        break;
+                    case 'NotFoundError':
+                        errorMessage = "Aucun microphone n'a été trouvé sur votre appareil.";
+                        break;
+                    case 'NotReadableError':
+                         errorMessage = "Impossible d'accéder au microphone en raison d'un problème matériel.";
+                         break;
+                    default:
+                        errorMessage = `Une erreur est survenue: ${err.message}`;
+                }
+            }
+            alert(errorMessage);
         }
     };
 
@@ -242,28 +276,28 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
         setIsRecording(false);
     };
 
-  const handleArchive = () => {
-    onArchive(contact.id, !contact.isArchived);
+  const handleArchive = async () => {
+    await onArchive(contact.id, !contact.isArchived);
     setIsMenuOpen(false);
   }
 
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
     setIsMenuOpen(false);
     if (window.confirm(`Voulez-vous vraiment effacer tous les messages de cette discussion ?`)) {
-      onClearChat(contact.id);
+      await onClearChat(contact.id);
       setMessages([]);
     }
   }
 
-  const handleBlock = () => {
+  const handleBlock = async () => {
     setIsMenuOpen(false);
     if (window.confirm(`Voulez-vous vraiment bloquer ${contact.name} ? Les contacts bloqués ne pourront plus vous appeler ou vous envoyer de messages.`)) {
-      onBlock(contact.id, true);
+      await onBlock(contact.id, true);
     }
   }
   
-  const handleUnblock = () => {
-    onBlock(contact.id, false);
+  const handleUnblock = async () => {
+    await onBlock(contact.id, false);
     setIsMenuOpen(false);
   }
 
@@ -380,9 +414,13 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ contact, onBack, onStartCall, o
             <button 
                 type={newMessage.trim() ? 'submit' : 'button'}
                 onClick={!newMessage.trim() ? handleStartRecording : undefined}
-                className="bg-cyan-500 rounded-full p-3 text-white hover:bg-cyan-600 transition-colors"
+                className="bg-cyan-500 rounded-full p-3 text-white hover:bg-cyan-600 transition-colors flex items-center justify-center w-12 h-12 disabled:bg-gray-600"
+                disabled={isSending}
             >
-                {newMessage.trim() ? <SendIcon className="w-6 h-6" /> : <MicrophoneIcon className="w-6 h-6" />}
+                {isSending 
+                    ? <SpinnerIcon className="w-6 h-6"/> 
+                    : (newMessage.trim() ? <SendIcon className="w-6 h-6" /> : <MicrophoneIcon className="w-6 h-6" />)
+                }
             </button>
             </form>
         )}
